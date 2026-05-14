@@ -39,7 +39,7 @@ private:
     uint16_t N_;
     std::vector<Machine> machines_;
     std::vector<Messege> messeges_;
-    uint16_t* times_;
+    std::vector<std::vector<uint16_t>> times_;
     uint64_t current_time = 0;
     uint64_t finished_items = 0;
     uint64_t total_items = 0;
@@ -58,7 +58,7 @@ private:
     }
 
     std::string parsing_times(std::ifstream& file){
-        times_ = new uint16_t[(M_ - 1) * N_];
+        times_.assign(M_ - 1, std::vector<uint16_t>(N_));
         for (uint16_t i = 0; i < M_ - 1; i++){
             std::string line;
             std::getline(file, line);
@@ -66,7 +66,7 @@ private:
             int time = 0;
             for (uint16_t j = 0; j < N_; j++){
                 if (!(stream_line >> time) || (time < 0 || time > 10000)) return line;
-                times_[i * N_ + j] = static_cast<uint16_t>(time);
+                times_[i][j] = static_cast<uint16_t>(time);
             }
             if (!(stream_line.eof())) return line;
         }
@@ -90,7 +90,7 @@ private:
                 detail.type = static_cast<uint16_t>(temp);
                 detail.number = count++;
                 machine.queue.push(detail);
-                machine.summary_time += times_[detail.type * N_ + i];
+                machine.summary_time += times_[detail.type][i];
             }
             machines_[i] = machine;
             if (!(stream_line.eof())) return line;
@@ -148,11 +148,10 @@ private:
             if (!mac.queue.empty()){
                 Detail& first = mac.queue.front();
                 mac.busy = true;
-                mac.finish_time = times_[first.type * N_ + i];
+                mac.finish_time = times_[first.type][i];
                 messeges_.push_back({start, first.number, first.type, static_cast<uint16_t>(i), 0});
             }
         }
-        PrintMessege();
     }
 
     void StatusMachine(int number){
@@ -161,14 +160,14 @@ private:
 
         Detail finished = mac.queue.front();
         mac.queue.pop();
-        mac.summary_time -= times_[finished.type * N_ + number];
+        mac.summary_time -= times_[finished.type][number];
         mac.busy = false;
         messeges_.push_back({finish, finished.number, finished.type, static_cast<uint16_t>(number), 0});
 
         if (!mac.queue.empty()){
             Detail& next = mac.queue.front();
             mac.busy = true;
-            mac.finish_time = current_time + times_[next.type * N_ + number];
+            mac.finish_time = current_time + times_[next.type][number];
             messeges_.push_back({start, next.number, next.type, static_cast<uint16_t>(number), 0});
         }
 
@@ -182,20 +181,19 @@ private:
 
             if (machines_[next_machine].summary_time == 0 && !machines_[next_machine].busy){
                 machines_[next_machine].queue.push(next_item);
-                machines_[next_machine].summary_time += times_[next_item.type * N_ + next_machine];
+                machines_[next_machine].summary_time += times_[next_item.type][next_machine];
                 machines_[next_machine].busy = true;
-                machines_[next_machine].finish_time = current_time + times_[next_item.type * N_ + next_machine];
+                machines_[next_machine].finish_time = current_time + times_[next_item.type][next_machine];
                 messeges_.push_back({start, next_item.number, next_item.type, static_cast<uint16_t>(next_machine), 0});
             } else {
                 int p;
                 if (machines_[next_machine].busy){
                     p = static_cast<int>(machines_[next_machine].queue.size() - 1);
-                }
-                else{
+                } else {
                     p = static_cast<int>(machines_[next_machine].queue.size());
                 }
                 machines_[next_machine].queue.push(next_item);
-                machines_[next_machine].summary_time += times_[next_item.type * N_ + next_machine];
+                machines_[next_machine].summary_time += times_[next_item.type][next_machine];
                 messeges_.push_back({wait, next_item.number, next_item.type, static_cast<uint16_t>(next_machine), static_cast<uint16_t>(p)});
             }
         }
@@ -203,24 +201,34 @@ private:
 
     void Start(){
         Initialization();
-        while (finished_items < total_items){
 
-            uint64_t next_time = std::numeric_limits<uint64_t>::max();
+        uint64_t next_time = std::numeric_limits<uint64_t>::max();
+        for (int i = 0; i < N_; i++){
+            if (machines_[i].busy && machines_[i].finish_time < next_time){
+                next_time = machines_[i].finish_time;
+            }
+        }
+        if (next_time) PrintMessege(); 
+
+        bool check = 0;
+        while (finished_items < total_items){
+            next_time = std::numeric_limits<uint64_t>::max();
             for (int i = 0; i < N_; i++){
                 if (machines_[i].busy && machines_[i].finish_time < next_time){
                     next_time = machines_[i].finish_time;
                 }
             }
             if (next_time == std::numeric_limits<uint64_t>::max()) break;
-
+            check = current_time == next_time ? 1 : 0;
             current_time = next_time;
             for (int i = 0; i < N_; i++){
                 if (machines_[i].busy && machines_[i].finish_time == current_time){
                     StatusMachine(i);
                 }
             }
-            PrintMessege();
+            if (!check) PrintMessege();
         }
+        if (check) PrintMessege();
         std::cout << "stop " << current_time << "\n";
     }
 
