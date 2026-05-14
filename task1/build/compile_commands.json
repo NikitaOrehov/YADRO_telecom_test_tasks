@@ -1,8 +1,0 @@
-[
-{
-  "directory": "D:/institute/YADRO/task1/build",
-  "command": "C:\\PROGRA~1\\MICROS~2\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP /DWIN32 /D_WINDOWS /EHsc /Zi /Ob0 /Od /RTC1 -MDd /FoCMakeFiles\\main.dir\\main.cpp.obj /FdCMakeFiles\\main.dir\\ /FS -c D:\\institute\\YADRO\\task1\\main.cpp",
-  "file": "D:/institute/YADRO/task1/main.cpp",
-  "output": "D:/institute/YADRO/task1/build/CMakeFiles/main.dir/main.cpp.obj"
-}
-]
